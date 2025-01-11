@@ -39,7 +39,6 @@ export class WeatherService {
       );
     }
   }
-
   private async fetchWeatherDataByZipcode(
     zipcode: string,
     country: string,
