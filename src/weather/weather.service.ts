@@ -16,36 +16,21 @@ export class WeatherService {
     params: GetWeatherDto,
   ): Promise<WeatherData | WeatherData[]> {
     try {
-      // Country-only implementation
-      if (!params.country) {
+      // Zipcode-only implementation
+      if (!params.zipcode) {
         throw new HttpException(
-          'Country parameter must be provided',
+          'Zipcode parameter must be provided',
           HttpStatus.BAD_REQUEST,
         );
       }
 
-      const countryCities = {
-        PH: ['Manila', 'Quezon City', 'Cebu', 'Davao'],
-        US: ['New York', 'Los Angeles', 'Chicago', 'Houston'],
-        GB: ['London', 'Manchester', 'Birmingham', 'Liverpool'],
-        JP: ['Tokyo', 'Osaka', 'Yokohama', 'Nagoya'],
-      };
-
-      const cities = countryCities[params.country.toUpperCase()];
-      if (!cities) {
-        throw new HttpException('Country not supported', HttpStatus.NOT_FOUND);
-      }
-
-      const weatherPromises = cities.map((city) =>
-        this.fetchWeatherData(`${city},${params.country}`),
-      );
-
-      const weatherData = await Promise.all(weatherPromises);
-      return weatherData.filter((data) => data !== null);
+      const country = params.country || 'PH';
+      return await this.fetchWeatherDataByZipcode(params.zipcode, country);
     } catch (error) {
       // Error handling remains the same
       if (error instanceof HttpException) {
         throw error;
+
       }
       throw new HttpException(
         'Failed to fetch weather data',
@@ -53,6 +38,7 @@ export class WeatherService {
       );
     }
   }
+
 
   private async fetchWeatherDataByZipcode(
     zipcode: string,
