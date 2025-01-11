@@ -16,22 +16,59 @@ export class WeatherService {
     params: GetWeatherDto,
   ): Promise<WeatherData | WeatherData[]> {
     try {
-      // City-only implementation
-      if (!params.city) {
+      // Validate that at least one parameter is provided
+      if (!params.city && !params.country && !params.zipcode) {
         throw new HttpException(
-          'City parameter must be provided',
+          'Either city, country, or zipcode must be provided',
           HttpStatus.BAD_REQUEST,
         );
       }
 
+      // If searching by zipcode
+      if (params.zipcode) {
+        const country = params.country || 'PH'; // Default to PH if no country provided
+        return await this.fetchWeatherDataByZipcode(params.zipcode, country);
+      }
+
+      // If searching by country only
+      if (!params.city && params.country) {
+        const countryCities = {
+          PH: ['Manila', 'Quezon City', 'Cebu', 'Davao'],
+          US: ['New York', 'Los Angeles', 'Chicago', 'Houston'],
+          GB: ['London', 'Manchester', 'Birmingham', 'Liverpool'],
+          JP: ['Tokyo', 'Osaka', 'Yokohama', 'Nagoya'],
+        };
+
+        const cities = countryCities[params.country.toUpperCase()];
+        if (!cities) {
+          throw new HttpException(
+            'Country not supported',
+            HttpStatus.NOT_FOUND,
+          );
+        }
+
+        const weatherPromises = cities.map((city) =>
+          this.fetchWeatherData(`${city},${params.country}`),
+        );
+
+        const weatherData = await Promise.all(weatherPromises);
+        return weatherData.filter((data) => data !== null);
+      }
+
+      // If searching by city (with or without country)
       const location = params.country
         ? `${params.city},${params.country}`
         : params.city;
       return await this.fetchWeatherData(location);
     } catch (error) {
-      // Error handling remains the same
       if (error instanceof HttpException) {
-        throw error;
+        throw error; // Re-throw HTTP exceptions as-is
+      }
+
+      console.error('Error details:', error.response?.data || error.message);
+
+      if (error.response?.status === 404) {
+        throw new HttpException('Location not found', HttpStatus.NOT_FOUND);
       }
       throw new HttpException(
         'Failed to fetch weather data',
@@ -39,6 +76,7 @@ export class WeatherService {
       );
     }
   }
+
   private async fetchWeatherDataByZipcode(
     zipcode: string,
     country: string,
@@ -105,3 +143,4 @@ export class WeatherService {
     };
   }
 }
+
